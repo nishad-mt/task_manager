@@ -22,7 +22,7 @@ class LoginView(APIView):
     def post(self, request):
         serialzer = LoginSerializer(data=request.data)
         if serialzer.is_valid():
-            data = serialzer.validated_data()
+            data = serialzer.validated_data
             return Response({
                 "message":"Login Successful",
                 "access_token": data['access_token'],
