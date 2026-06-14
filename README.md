@@ -39,3 +39,11 @@ cd client
 npm install
 
 npm run dev
+
+## Environment Variables
+
+Create a `.env` file inside the backend directory and copy the values from `.env.example`.
+
+```bash
+cp .env.example backend/.env
+```
