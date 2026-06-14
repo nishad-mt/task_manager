@@ -141,7 +141,7 @@ export default function Tasks() {
             <nav className={styles.navbar}>
                 <h1 className={styles.logo}>TaskManager</h1>
                 <div className={styles.navRight}>
-                    <span className={styles.welcome}>Hi, {user?.username} 👋</span>
+                    <span className={styles.welcome}>Hi, {user?.username}</span>
                     <button onClick={logout} className={styles.logoutBtn}>Logout</button>
                 </div>
             </nav>

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import styles from '../styles/Signup.module.css'
 
 export default function Signup() {
+    const [errors, setErrors] = useState({})
     const { signup } = useAuth()
     const [formData, setFormData] = useState({
         username: '', email: '', password: '', password2: ''
@@ -27,9 +28,8 @@ export default function Signup() {
         try {
             await signup(formData.username, formData.email, formData.password, formData.password2)
         } catch (err) {
-            const errors = err.response?.data
-            const first  = errors ? Object.values(errors)[0][0] : 'Signup failed.'
-            setError(first)
+            const backendErrors = err.response?.data || {}
+            setErrors(backendErrors)
         } finally {
             setLoading(false)
         }
@@ -46,6 +46,11 @@ export default function Signup() {
                 <form onSubmit={handleSubmit} className={styles.form}>
                     <div className={styles.field}>
                         <label>Username</label>
+                        {errors.username && (
+                            <span className={styles.fieldError}>
+                                {errors.username[0]}
+                            </span>
+                        )}
                         <input
                             type="text"
                             name="username"
@@ -58,6 +63,11 @@ export default function Signup() {
 
                     <div className={styles.field}>
                         <label>Email</label>
+                        {errors.email && (
+                                <span className={styles.fieldError}>
+                                    {errors.email[0]}
+                                </span>
+                            )}                        
                         <input
                             type="email"
                             name="email"
@@ -70,6 +80,11 @@ export default function Signup() {
 
                     <div className={styles.field}>
                         <label>Password</label>
+                         {errors.password && (
+                            <span className={styles.fieldError}>
+                                {errors.password[0]}
+                            </span>
+                        )}
                         <input
                             type="password"
                             name="password"

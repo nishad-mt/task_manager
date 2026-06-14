@@ -29,23 +29,22 @@
 }
 
 .welcome {
-    font-size: 0.9rem;
+    font-size: 1rem;
     color:     var(--text-secondary);
 }
 
 .logoutBtn {
     padding:       0.45rem 1rem;
-    background:    transparent;
+    background:    red;
     border:        1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size:     0.85rem;
-    color:         var(--text-secondary);
+    border-radius: 10px;
+    font-size:     0.9rem;
+    color:         white;
     transition:    all 0.2s;
 }
 
 .logoutBtn:hover {
-    border-color: var(--danger);
-    color:        var(--danger);
+    background: rgba(204, 0, 0, 0.818);
 }
 
 /* ── Content ───────────────────────────────────────────────────── */
@@ -252,7 +251,7 @@
 
 .strikethrough {
     text-decoration: line-through;
-    color:           var(--text-light);
+    color: var(--text-light);
 }
 
 .descCol {

@@ -6,6 +6,13 @@
     background-color: #f5f7fa;
 }
 
+.fieldError {
+    display: block;
+    color: red;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
 .card {
     background: #fff;
     padding: 2.5rem;
