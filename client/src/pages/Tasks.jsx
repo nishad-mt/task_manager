@@ -19,6 +19,7 @@ export default function Tasks() {
     const [tasks, setTasks]           = useState([])
     const [loading, setLoading]       = useState(true)
     const [error, setError]           = useState('')
+    const [formErrors, setFormErrors] = useState({})
     const [showModal, setShowModal]   = useState(false)
     const [editTask, setEditTask]     = useState(null)
     const [formData, setFormData]     = useState(EMPTY_FORM)
@@ -97,9 +98,7 @@ export default function Tasks() {
             }
             closeModal()
         } catch (err) {
-            const errors = err.response?.data
-            const first  = errors ? Object.values(errors)[0] : 'Failed to save task.'
-            setError(Array.isArray(first) ? first[0] : first)
+            setFormErrors(err.response?.data || {})
         } finally {
             setSubmitting(false)
         }
@@ -299,7 +298,11 @@ export default function Tasks() {
                             <button onClick={closeModal} className={styles.closeBtn}>✕</button>
                         </div>
 
-                        {error && <div className={styles.modalError}>{error}</div>}
+                       {Object.keys(formErrors).length > 0 && (
+                            <div className={styles.modalError}>
+                                {Object.values(formErrors)[0][0]}
+                            </div>
+                        )}
 
                         <form onSubmit={handleSubmit} className={styles.form}>
                             <div className={styles.field}>
