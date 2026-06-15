@@ -13,10 +13,10 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const storedUser = localStorage.getItem('user')
         if (storedUser) {
-            setUser(JSON.parse(storedUser))
+            setUser(JSON.parse(storedUser)) //localStorage stores only strings.React state expects an object
         }
-        setLoading(false)
-    }, [])
+        setLoading(false) //Whether a user was found or not, we're done checking localStorage.
+    }, []) //Run once on component mount
 
     //Signup 
     const signup = async (username, email, password, password2) => {
@@ -40,29 +40,13 @@ export const AuthProvider = ({ children }) => {
 
     //Logout
     const logout = () => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('user')
+        localStorage.clear()
         setUser(null)
         navigate('/login')
     }
 
-    //Token Refresh
-    const refreshToken = async () => {
-        try {
-            const refresh = localStorage.getItem('refresh_token')
-            if (!refresh) throw new Error('No refresh token')
-
-            const res = await api.post('/users/token/refresh/', { refresh })
-            localStorage.setItem('access_token', res.data.access)
-            return res.data.access
-        } catch {
-            logout()
-        }
-    }
-
     return (
-        <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshToken }}>
+        <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
             {!loading && children}
         </AuthContext.Provider>
     )

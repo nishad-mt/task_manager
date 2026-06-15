@@ -14,21 +14,21 @@ api.interceptors.request.use((config)=>{
 })
 
 // Auto refresh token if access token expired
-api.interceptors.request.use(
+api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        const original = error.config
+        const original = error.config //Stores the request that failed.
 
-        if (error.response?.status == 401 && !original._retry){
-            original._retry = true
+        if (error.response?.status == 401 && !original._retry){ //Token expired? Have we not retried already?
+            original._retry = true //Prevent Infinite Loop
 
              try {
-                const refresh  = localStorage.getItem('refresh_token')
-                const res      = await axios.post('http://localhost:8000/api/users/token/refresh/', { refresh })
+                const refresh  = localStorage.getItem('refresh_token') //Stored during login.
+                const res      = await axios.post('http://localhost:8000/api/users/token/refresh/', { refresh }) //Request New Access Token
                 const newToken = res.data.access
 
                 localStorage.setItem('access_token', newToken)
-                original.headers.Authorization = `Bearer ${newToken}`
+                original.headers.Authorization = `Bearer ${newToken}` //Update Failed Request,Now the old request uses the new token
 
                 return api(original)  // retry original request
             } catch {
@@ -37,7 +37,7 @@ api.interceptors.request.use(
             }
         }
 
-        return Promise.reject(error)
+        return Promise.reject(error) //Passes the error to the component that made the request.
     }
 )
 
