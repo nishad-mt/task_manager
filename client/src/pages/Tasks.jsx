@@ -27,18 +27,35 @@ export default function Tasks() {
     const [filterStatus,   setFilterStatus]   = useState('')
     const [filterPriority, setFilterPriority] = useState('')
     const [search, setSearch]         = useState('')
+    // searchQuery is what was last submitted — separates typing from fetching
+    const [searchQuery, setSearchQuery] = useState('')
+
+    const [count, setCount]       = useState(0)
+    const [nextPage, setNextPage] = useState(null)
+    const [prevPage, setPrevPage] = useState(null)
+    const [page, setPage]         = useState(1)
+
+    // ── Stats (server-side counts, not page-slice counts) ─────────────────
+    // We keep separate counters returned from the API per-status so the
+    // summary always reflects the full dataset, not just the current page.
+    const [statusCounts, setStatusCounts] = useState({ TODO: 0, IN_PROGRESS: 0, DONE: 0 })
 
     // ── Fetch ─────────────────────────────────────────────────────────────
     const fetchTasks = async () => {
         setLoading(true)
         setError('')
         try {
-            const params = {}
+            const params = { page }
             if (filterStatus)   params.status   = filterStatus
             if (filterPriority) params.priority = filterPriority
-            if (search)         params.search   = search
+            if (searchQuery)    params.search   = searchQuery
+
             const res = await api.get('/tasks/', { params })
-            setTasks(res.data)
+
+            setTasks(res.data.results)
+            setCount(res.data.count)
+            setNextPage(res.data.next)
+            setPrevPage(res.data.previous)
         } catch {
             setError('Failed to load tasks.')
         } finally {
@@ -46,17 +63,69 @@ export default function Tasks() {
         }
     }
 
-    useEffect(() => { fetchTasks() }, [filterStatus, filterPriority])
+    // Fetch full status breakdown (no filter, no pagination) for the stats row.
+    // This gives accurate totals regardless of active filters / page.
+    const fetchStatusCounts = async () => {
+        try {
+            const [todoRes, inProgressRes, doneRes] = await Promise.all([
+                api.get('/tasks/', { params: { status: 'TODO',        page_size: 1 } }),
+                api.get('/tasks/', { params: { status: 'IN_PROGRESS', page_size: 1 } }),
+                api.get('/tasks/', { params: { status: 'DONE',        page_size: 1 } }),
+            ])
+            setStatusCounts({
+                TODO:        todoRes.data.count,
+                IN_PROGRESS: inProgressRes.data.count,
+                DONE:        doneRes.data.count,
+            })
+        } catch {
+            // stats are non-critical; fail silently
+        }
+    }
 
+    // Re-fetch tasks whenever page, filters, or committed search query change.
+    useEffect(() => {
+        fetchTasks()
+    }, [page, filterStatus, filterPriority, searchQuery])
+
+    // Re-fetch stats on mount and after any mutation (tracked via `count`
+    // which changes on create / delete).  We also refresh on filter change so
+    // the total reflects any server-side data changes in the meantime.
+    useEffect(() => {
+        fetchStatusCounts()
+    }, [count])
+
+    // Reset to page 1 whenever filters change so we never land on a
+    // non-existent page after narrowing results.
+    const handleFilterStatus = (val) => {
+        setFilterStatus(val)
+        setPage(1)
+    }
+
+    const handleFilterPriority = (val) => {
+        setFilterPriority(val)
+        setPage(1)
+    }
+
+    // Commit the search only when the form is submitted.
     const handleSearch = (e) => {
         e.preventDefault()
-        fetchTasks()
+        setPage(1)
+        setSearchQuery(search)   // ← triggers the useEffect above
+    }
+
+    // Clear search
+    const handleClearSearch = () => {
+        setSearch('')
+        setSearchQuery('')
+        setPage(1)
     }
 
     // ── Modal ─────────────────────────────────────────────────────────────
     const openCreate = () => {
         setEditTask(null)
         setFormData(EMPTY_FORM)
+        setFormErrors({})        // ← reset validation errors on open
+        setError('')
         setShowModal(true)
     }
 
@@ -69,6 +138,8 @@ export default function Tasks() {
             priority:    task.priority,
             status:      task.status,
         })
+        setFormErrors({})        // ← reset validation errors on open
+        setError('')
         setShowModal(true)
     }
 
@@ -76,6 +147,7 @@ export default function Tasks() {
         setShowModal(false)
         setEditTask(null)
         setFormData(EMPTY_FORM)
+        setFormErrors({})
         setError('')
     }
 
@@ -87,6 +159,7 @@ export default function Tasks() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setSubmitting(true)
+        setFormErrors({})
         setError('')
         try {
             if (editTask) {
@@ -95,6 +168,7 @@ export default function Tasks() {
             } else {
                 const res = await api.post('/tasks/', formData)
                 setTasks([res.data, ...tasks])
+                setCount(prev => prev + 1)   // triggers stats refresh
             }
             closeModal()
         } catch (err) {
@@ -110,6 +184,7 @@ export default function Tasks() {
         try {
             await api.delete(`/tasks/${id}/`)
             setTasks(tasks.filter(t => t.id !== id))
+            setCount(prev => prev - 1)       // triggers stats refresh
         } catch {
             setError('Failed to delete task.')
         }
@@ -120,18 +195,19 @@ export default function Tasks() {
         try {
             const res = await api.patch(`/tasks/${task.id}/`, { status: newStatus })
             setTasks(tasks.map(t => t.id === task.id ? res.data : t))
+            // Trigger a stats refresh by bumping count (value itself unchanged
+            // but the effect dependency sees a new reference via the setter).
+            fetchStatusCounts()
         } catch {
             setError('Failed to update status.')
         }
     }
 
-    // ── Stats ─────────────────────────────────────────────────────────────
-    const stats = {
-        total:      tasks.length,
-        todo:       tasks.filter(t => t.status === 'TODO').length,
-        inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-        done:       tasks.filter(t => t.status === 'DONE').length,
-    }
+    // ── Derived stats ─────────────────────────────────────────────────────
+    const totalCount    = statusCounts.TODO + statusCounts.IN_PROGRESS + statusCounts.DONE
+    const todoCount     = statusCounts.TODO
+    const inProgCount   = statusCounts.IN_PROGRESS
+    const doneCount     = statusCounts.DONE
 
     return (
         <div className={styles.page}>
@@ -150,19 +226,19 @@ export default function Tasks() {
                 {/* ── Stats ── */}
                 <div className={styles.stats}>
                     <div className={styles.statCard}>
-                        <span className={styles.statNum}>{stats.total}</span>
+                        <span className={styles.statNum}>{totalCount}</span>
                         <span className={styles.statLabel}>Total</span>
                     </div>
                     <div className={styles.statCard}>
-                        <span className={`${styles.statNum} ${styles.todoColor}`}>{stats.todo}</span>
+                        <span className={`${styles.statNum} ${styles.todoColor}`}>{todoCount}</span>
                         <span className={styles.statLabel}>To Do</span>
                     </div>
                     <div className={styles.statCard}>
-                        <span className={`${styles.statNum} ${styles.inprogressColor}`}>{stats.inProgress}</span>
+                        <span className={`${styles.statNum} ${styles.inprogressColor}`}>{inProgCount}</span>
                         <span className={styles.statLabel}>In Progress</span>
                     </div>
                     <div className={styles.statCard}>
-                        <span className={`${styles.statNum} ${styles.doneColor}`}>{stats.done}</span>
+                        <span className={`${styles.statNum} ${styles.doneColor}`}>{doneCount}</span>
                         <span className={styles.statLabel}>Done</span>
                     </div>
                 </div>
@@ -178,18 +254,23 @@ export default function Tasks() {
                             onChange={e => setSearch(e.target.value)}
                         />
                         <button type="submit">Search</button>
+                        {searchQuery && (
+                            <button type="button" onClick={handleClearSearch}>
+                                Clear
+                            </button>
+                        )}
                     </form>
 
                     {/* Filters */}
                     <div className={styles.filters}>
-                        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                        <select value={filterStatus} onChange={e => handleFilterStatus(e.target.value)}>
                             <option value="">All Status</option>
                             <option value="TODO">To Do</option>
                             <option value="IN_PROGRESS">In Progress</option>
                             <option value="DONE">Done</option>
                         </select>
 
-                        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
+                        <select value={filterPriority} onChange={e => handleFilterPriority(e.target.value)}>
                             <option value="">All Priority</option>
                             <option value="LOW">Low</option>
                             <option value="MEDIUM">Medium</option>
@@ -231,7 +312,9 @@ export default function Tasks() {
                             <tbody>
                                 {tasks.map((task, index) => (
                                     <tr key={task.id}>
-                                        <td className={styles.indexCol}>{index + 1}</td>
+                                        <td className={styles.indexCol}>
+                                            {(page - 1) * 5 + index + 1}
+                                        </td>
 
                                         <td className={styles.titleCol}>
                                             <span className={task.status === 'DONE' ? styles.strikethrough : ''}>
@@ -285,6 +368,22 @@ export default function Tasks() {
                                 ))}
                             </tbody>
                         </table>
+
+                        <div className={styles.pagination}>
+                            <button
+                                disabled={!prevPage}
+                                onClick={() => setPage(page - 1)}
+                            >
+                                Previous
+                            </button>
+                            <span>Page {page}</span>
+                            <button
+                                disabled={!nextPage}
+                                onClick={() => setPage(page + 1)}
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -298,7 +397,7 @@ export default function Tasks() {
                             <button onClick={closeModal} className={styles.closeBtn}>✕</button>
                         </div>
 
-                       {Object.keys(formErrors).length > 0 && (
+                        {Object.keys(formErrors).length > 0 && (
                             <div className={styles.modalError}>
                                 {Object.values(formErrors)[0][0]}
                             </div>

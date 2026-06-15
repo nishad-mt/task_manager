@@ -118,6 +118,7 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS':  True,
 }
 
+# For protected APIs, authenticate users using JWT tokens.
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',

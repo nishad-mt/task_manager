@@ -20,6 +20,13 @@ A full-stack task management application built with Django REST Framework, React
 - Delete Tasks
 - Mark Tasks Complete
 
+### Task Organization
+- Search Tasks by Title
+- Filter Tasks by Status
+- Filter Tasks by Priority
+- Pagination Support
+- User-specific Task Access
+
 ## Setup
 
 ### Backend
@@ -47,3 +54,12 @@ Create a `.env` file inside the backend directory and copy the values from `.env
 ```bash
 cp .env.example backend/.env
 ```
+## Bonus Features
+
+Implemented:
+- Pagination for task listing
+
+Not Implemented:
+-Categories/Tags
+-Backend Unit Tests
+-Docker Compose Setup

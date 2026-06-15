@@ -18,7 +18,7 @@ class SignupSerializer(serializers.ModelSerializer):
         
         return value
     
-    def validate(value,attrs):
+    def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password":"Password do not match"})
         return attrs
@@ -47,12 +47,14 @@ class LoginSerializer(serializers.Serializer):
         
         user = authenticate(username=user.username, password=password)
 
-        if not user.is_active:
-            raise serializers.ValidationError("Invalid email or password")
+        if user is None:
+            raise serializers.ValidationError(
+                "Invalid email or password."
+            )
         
-        refresh = RefreshToken.for_user(user)
+        refresh = RefreshToken.for_user(user) #creates a new JWT refresh token for that user
         data['user'] = user
-        data['access_token'] = str(refresh.access_token)
+        data['access_token'] = str(refresh.access_token) #creates an access token from the refresh token.
         data['refresh_token'] = str(refresh)
         return data
 

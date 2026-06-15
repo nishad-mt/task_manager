@@ -3,11 +3,12 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Task
 from .serializers import TaskSerializer
 from rest_framework.filters import SearchFilter
-
+from .pagination import TaskPagination
 
 class TaskViewSet(ModelViewSet):
     serializer_class   = TaskSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = TaskPagination
 
     filter_backends = [SearchFilter]
     search_fields = ['title']
